@@ -1,0 +1,20 @@
+version: "3.4"
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    hostname: localhost
+    ports:
+      - 15672:15672
+      - 5672:5672
+    volumes:
+      - ".:/rabbitmq:rw"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+  redis:
+    image: redis:alpine
+    container_name: redis
+    hostname: localhost
+    ports:
+      - "6379:6379"
