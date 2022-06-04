@@ -1,21 +1,48 @@
-﻿using RabbitMQ.Client;
+﻿using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using RabbitMQ.Client;
+using System;
+using System.Linq;
+using System.Text;
+using WebApi.RabbitMq;
 
 namespace WebApi.RabbitMQ
 {
-    public class RabbitMQService
+    public class RabbitMqService
     {
-        // localhost üzerinde kurulu olduğu için host adresi olarak bunu kullanıyorum.
-        private readonly string _hostName = "localhost";
-
-        public IConnection GetRabbitMQConnection()
+        private readonly IOptions<RabbitMqConfiguration> _options;
+        private IConnectionFactory _connectionFactory;
+        private IConnection _connection;
+        public RabbitMqService(IOptions<RabbitMqConfiguration> options)
         {
-            ConnectionFactory connectionFactory = new ConnectionFactory()
-            {
-                // RabbitMQ'nun bağlantı kuracağı host'u tanımlıyoruz. Herhangi bir güvenlik önlemi koymak istersek, Management ekranından password adımlarını tanımlayıp factory içerisindeki "UserName" ve "Password" property'lerini set etmemiz yeterlidir.
-                HostName = _hostName
-            };
+            _options = options;
+            CreateRabbitMqConnection();
 
-            return connectionFactory.CreateConnection();
+        }
+        private void CreateRabbitMqConnection()
+        {
+            _connectionFactory = new ConnectionFactory()
+            {
+                UserName = _options.Value.UserName,
+                Password = _options.Value.Password,
+                Port = _options.Value.Port,
+                VirtualHost = _options.Value.VirtualHost
+            };
+            _connection = _connectionFactory.CreateConnection(_options.Value.HostNames.ToList());
+        }
+        public IModel CreateModel()
+        {
+            return _connection.CreateModel();
+        }
+        private void Publish(string exchange, string routingKey, bool mandatory = false, IBasicProperties basicProperties = null, ReadOnlyMemory<byte> body = default)
+        {
+            using var channel = CreateModel();
+            channel.BasicPublish(exchange, routingKey, mandatory, basicProperties, body);
+        }
+        public void Publish(string exchange, string routingKey, object body, bool mandatory = false, IBasicProperties basicProperties = null)
+        {
+            var json = JsonConvert.SerializeObject(body);
+            Publish(exchange, routingKey, mandatory, basicProperties, Encoding.UTF8.GetBytes(json));
         }
     }
 }

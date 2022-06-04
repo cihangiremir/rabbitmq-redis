@@ -12,8 +12,7 @@ namespace WebApi.Controllers
     [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
-        private readonly ILogger<UserController> _logger;
-        static IList<User> Users = new List<User>()
+        private readonly static IList<User> Users = new List<User>()
         {
             new User { Id = 1, Name = "Alex", Position = "OOS" },
             new User { Id = 2, Name = "Hagi", Position = "RW" },
@@ -24,23 +23,30 @@ namespace WebApi.Controllers
             new User { Id = 7, Name = "Iniesta", Position = "GO" },
             new User { Id = 8, Name = "Maldini", Position = "CF" },
         };
-        private Publisher _publisher;
-        private Consumer _consumer;
-        private ICacheManager _cacheManager;
 
-        public UserController(ILogger<UserController> logger, ICacheManager cacheManager)
+        private readonly ILogger<UserController> _logger;
+        private readonly RabbitMqService _rabbitMqService;
+        private readonly ICacheManager _cacheManager;
+
+        public UserController(ILogger<UserController> logger, ICacheManager cacheManager, RabbitMqService rabbitMqService)
         {
             _logger = logger;
             _cacheManager = cacheManager;
+            _rabbitMqService = rabbitMqService;
         }
         [HttpPost]
         public IActionResult Add(User user)
         {
             user.DateTime = DateTime.Now;
-            _publisher = new Publisher("user", JsonConvert.SerializeObject(user));
             Users.Add(user);
+
+            _rabbitMqService.Publish("", "user", JsonConvert.SerializeObject(user));
+            _logger.LogDebug("Message published to queue");
+
             _cacheManager.Add("users", Users, 100);
-            return Ok("Kullanıcı Kuyruğa ve Cache'e Eklendi..");
+            _logger.LogDebug("Users added to cache");
+
+            return Ok("Process successfully");
         }
         [HttpGet]
         public IEnumerable<User> Get()

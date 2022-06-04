@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using WebApi.RabbitMq;
+using WebApi.RabbitMQ;
 using WebApi.Redis;
 
 namespace WebApi
@@ -28,8 +30,15 @@ namespace WebApi
                     builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyMethod();
                 });
             });
+
+            services.Configure<RabbitMqConfiguration>(Configuration.GetSection("RabbitMqConfiguration"));
+            services.Configure<RedisConfiguration>(Configuration.GetSection("RedisConfiguration"));
             services.AddSingleton<IRedisServer, RedisServer>();
             services.AddSingleton<ICacheManager, RedisCacheManager>();
+            services.AddSingleton<RabbitMqService, RabbitMqService>();
+
+            //IHostedService
+            services.AddHostedService<UserConsumerService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
